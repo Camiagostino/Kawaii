@@ -1,0 +1,709 @@
+# =============================================================================
+# KAWAII SESSION 2 EEG ANALYSIS — COLLABORATOR EXAMPLE CONFIG
+# =============================================================================
+# This example preserves the validated scientific method settings while using
+# synthetic identifiers and repository-relative example paths. It is not bound
+# to the internal cohort, publications, manual reviews, or source-exposure
+# authority. Replace only the clearly operational fields for approved data.
+# =============================================================================
+
+paths:
+  ########################################
+  # PATHS
+  ########################################
+  project_root: .
+  raw_eeg_dir: data/session2/eeg
+  session2_logs_dir: data/session2/behavioral_logs
+  session2_schedules_dir: data/session2/schedules
+  output_dir: outputs/session2
+  derivatives_dir: outputs/session2/derivatives
+  brainvision_working_dir: outputs/session2/derivatives/brainvision_working_copies
+  alignment_dir: outputs/session2/derivatives/alignment
+  preprocessing_dir: outputs/session2/derivatives/preprocessing
+  ica_dir: outputs/session2/derivatives/ica
+  epochs_dir: outputs/session2/derivatives/epochs
+  raw_qc_dir: outputs/session2/qc/raw
+  ica_qc_dir: outputs/session2/qc/ica
+  epoch_qc_dir: outputs/session2/qc/epochs
+  report_dir: outputs/session2/reports
+  manual_review_dir: user_state/session2/manual_review
+  qc_dir: outputs/session2/qc
+
+outputs:
+  ########################################
+  # OUTPUTS AND PERSISTENCE
+  ########################################
+  persistence_policy:
+    preserve_intermediates: true
+    rationale: Maximise reproducibility and avoid rerunning expensive preprocessing steps.
+    planned_artifacts:
+      corrected_brainvision_working_copies: true
+      validated_event_tables: true
+      alignment_tables: true
+      raw_fif: false
+      filtered_raw_fif: true
+      ica_ready_raw_fif: false
+      ica_solution: true
+      ica_cleaned_raw_fif: true
+      epochs_fif: true
+      evoked_fif: true
+      participant_measurements: true
+
+source_exposure_verification:
+  # Disabled only because no participant/source authority is distributed.
+  # Recognition analyses require an independently reviewed, source-bound
+  # disposition manifest supplied by the user; do not enable this with an
+  # invented identity.
+  enabled: false
+  required_subjects: []
+  manifest_path: USER_SUPPLIED/source_exposure_manifest.json
+  expected_artifact_id: USER_SUPPLIED_SHA256
+
+recordings:
+  ########################################
+  # PARTICIPANTS AND RECORDING PARTS
+  ########################################
+  filename_template: "kawaii{subject_number:04d}"
+  expected_sampling_rate_hz: 500.0
+  sampling_rate_tolerance_hz: 0.001
+  participant_recordings: {}
+
+preprocessing:
+  ########################################
+  # PREPROCESSING DEFAULTS
+  ########################################
+  montage: standard_1005
+  line_frequency_hz: 50.0
+  resample_hz: 500
+  analysis_highpass_hz: 0.1
+  analysis_lowpass_hz: 30.0
+  ica_highpass_hz: 1.0
+  ica_lowpass_hz: 30.0
+  notch_filter:
+    enabled: false
+    frequencies_hz: [50, 100]
+    apply_after_psd_qc: true
+    auto_apply_if_line_noise_exceeds_threshold: false
+  reference:
+    add_provisional_cpz: true
+    provisional_reference_channel: CPz
+    acquisition_reference_channel: CPz
+    acquisition_reference_evidence: Phase 1 audit plus all four available 64-channel BrainVision headers; CPz is absent from recorded channels and all channel reference-name fields are blank.
+    reconstruct_after_ica_gate3c: true
+    apply_average_reference_gate3a: false
+    apply_average_reference_gate3c: true
+    defer_average_reference_until_after_bad_channel_review: true
+  interpolation:
+    enabled_gate3c: true
+    method: mne_interpolate_bads
+    apply_only_manual_confirmed_bad_channels: true
+  task_crop:
+    enabled_for_ica: true
+    enabled_for_epoching: true
+    padding_before_s: 30
+    padding_after_s: 30
+    max_expected_duration_s: 3600
+    fail_if_crop_too_long: true
+    long_gap_handling:
+      enabled: true
+      split_on_gap_s: 60
+      keep_only_segments_with_retained_trials: true
+  memory:
+    mne_preload_mode: false
+    use_memmap_for_filtering: true
+    memmap_dir: .tmp/session2/memmap
+    cleanup_memmap_after_success: true
+    gate3c_use_memmap: true
+    gate3c_memmap_dir: .tmp/session2/memmap
+    cleanup_gate3c_memmap_after_success: true
+  ica:
+    enabled: true
+    required_for_epoching: true
+    method: infomax
+    fit_params:
+      extended: true
+    # First-pass real-data validation defaults. These are intentionally
+    # conservative and should be revisited before final scientific analyses.
+    n_components: rank_aware
+    decim: 5
+    max_iter: auto
+    random_state: 20260627
+    fit_only_eeg_channels: true
+    fit_subset:
+      enabled: true
+      use_when_task_duration_exceeds_s: 1800
+      max_duration_s: 1200
+      strategy: balanced_across_blocks
+      window_s: 30
+      min_windows_per_block: 1
+      max_windows_per_block: 3
+      include_all_blocks: true
+    ocular_detection_channels: [IO1, IO2]
+    exclude_channels:
+      - LO1
+      - LO2
+      - ECG1
+      - ECG2
+    apply_components_gate3b: false
+    diagnostics:
+      fail_pipeline_on_error: false
+      generate_eog_scores: true
+      generate_topomaps: true
+      generate_component_spectra: true
+      generate_component_properties: false
+      generate_reports: true
+      generate_figures: true
+      time_window_s: [0, 60]
+      component_review_page_size: 10
+      skip_component_properties_by_default: true
+  ########################################
+  # QC
+  ########################################
+  raw_qc:
+    # These are initial proposal thresholds, not validated scientific exclusion
+    # criteria. Review/tune after approximately the first 10-20 real EEG
+    # participants before using them for exclusion decisions.
+    min_duration_s: 60
+    flat_std_uv: 0.01
+    extreme_std_uv: 500
+    extreme_peak_to_peak_uv: 5000
+    clipping_fraction_threshold: 0.001
+    clipping_min_repeated_samples: 3
+    distributed_window_count: 3
+    distributed_window_duration_s: 40
+    # PREP-style bad-by-correlation evidence. This transformation is QC-only:
+    # it never changes the downstream 0.1-30 Hz analysis raw. PyPREP is not a
+    # project dependency, so the bounded-memory filter is explicitly recorded.
+    poor_correlation_method: prep_style_p98_v1
+    poor_correlation_filter_method: scipy_butterworth_sosfiltfilt
+    poor_correlation_filter_order: 4
+    poor_correlation_filter_highpass_hz: 1.0
+    poor_correlation_filter_lowpass_hz: 50.0
+    poor_correlation_filter_chunk_duration_s: 300
+    poor_correlation_filter_padding_s: 5
+    poor_correlation_window_duration_s: 1.0
+    poor_correlation_peer_percentile: 0.98
+    poor_correlation_threshold: 0.4
+    poor_correlation_bad_window_fraction: 0.01
+    poor_correlation_dropout_flat_threshold_v: 1.0e-15
+    poor_correlation_reference_state: acquisition_reference
+    poor_correlation_data_scope: task_segments
+    robust_deviation_z_threshold: 5.0
+    robust_deviation_min_log_scale: 0.05
+    line_noise_ratio_threshold: 0.5
+    bad_channel_fraction_warn: 0.2
+    roi_bad_fraction_warn: 0.5
+    roi_bad_count_warn: 2
+    spatial_cluster_distance_m: 0.06
+    montage_edge_quantile: 0.8
+    channel_qc_duration_s: 120
+    channel_qc_start_s: 0
+    psd_duration_s: 120
+    psd_start_s: 0
+    psd_fmax_hz: 120
+    psd_plot_fmin_hz: 1
+    psd_plot_fmax_hz: 80
+    raw_overview_duration_s: 20
+    raw_overview_start_s: 0
+    # Display-only scaling for the EEG-only raw-review figure. Scientific data
+    # are unchanged; large excursions remain visible across trace rows.
+    raw_overview_eeg_scaling_uv: 100
+    line_noise_bandwidth_hz: 1.0
+    figures:
+      enabled: true
+      fail_pipeline_on_figure_error: false
+  save:
+    raw_fif: false
+    filtered_raw_fif: true
+    ica_ready_raw_fif: false
+    ica_solution: true
+    ica_cleaned_raw_fif: true
+    epochs_fif: true
+    evoked_fif: false
+
+epochs:
+  ########################################
+  # EPOCH DEFINITIONS
+  ########################################
+  preload: false
+  save_epochs_fif: true
+  # One shared Session 2 image-locked epoch definition. Gate 4 branches consume
+  # these already-baselined, QC-retained epochs and do not redefine baseline.
+  canonical:
+    event: image_onset
+    tmin_s: -0.2
+    tmax_s: 1.2
+    baseline_s: [-0.2, 0.0]
+  residual_eeg_qc:
+    enabled: true
+    # Study-specific value frozen condition-blind before inferential inspection.
+    # It is not a universal EEG default.
+    peak_to_peak_threshold_uv: 330.0
+  qc_figures:
+    enabled: true
+    fail_pipeline_on_figure_error: false
+    erp_preview_enabled: false
+    ica_before_after_duration_s: 20
+    ica_before_after_start_s: 0
+
+erp:
+  ########################################
+  # PARTICIPANT-LEVEL ERP ANALYSES
+  ########################################
+  common:
+    input_epochs_file: epochs/all_image_epochs-epo.fif
+    input_metadata_file: epochs/epoch_metadata.csv
+    output_stage: erp
+    save_evokeds_fif: true
+    evoked_filename: participant_erps-ave.fif
+    figures:
+      enabled: true
+      fail_pipeline_on_figure_error: false
+      waveform_filename: waveforms.png
+      waveform_combine: mean
+      butterfly_enabled: false
+      gfp_enabled: false
+  recognition:
+    enabled: true
+    condition_column: old_new_status
+    fallback_condition_columns: [condition]
+    require_all_conditions: false
+    picks: eeg
+    channels: []
+    plotting:
+      exclude_channels: [T1, T2]
+      exclude_channels_rationale: T1/T2 are unresolved legacy temporal labels in the standard_1005 montage for these recordings; they are excluded from Gate 4A figures only to avoid overlapping-position plotting failures. ERP averages and ROI measurements are otherwise unchanged.
+    latency_window_s: [0.0, 1.2]
+    measurement_time_windows:
+      300_500_ms:
+        label: 300-500 ms
+        start_ms: 300
+        end_ms: 500
+      500_800_ms:
+        label: 500-800 ms
+        start_ms: 500
+        end_ms: 800
+    topography_time_windows:
+      300_500_ms:
+        label: 300-500 ms
+        start_ms: 300
+        end_ms: 500
+      500_800_ms:
+        label: 500-800 ms
+        start_ms: 500
+        end_ms: 800
+    rois:
+      frontal:
+        channels: [Fz, F1, F2, FCz]
+      frontocentral:
+        channels: [Fz, FCz, FC1, FC2, Cz]
+      centroparietal:
+        channels: [Cz, CP1, CP2, Pz]
+      parietal:
+        channels: [Pz, P1, P2, CP1, CP2]
+    roi_completeness:
+      rule: strict_majority
+      description: More than half of the configured ROI channels must be available; otherwise the measurement is retained for QC with a missing amplitude.
+    scientific_hierarchy:
+      primary_contrast: hit_vs_correct_rejection
+      primary_hypothesis_family: recognition_primary_old_new
+      primary_cells:
+        - roi: frontal
+          time_window: 300_500_ms
+          hypothesis_id: REC_PRIMARY_EARLY_FRONTAL
+        - roi: frontocentral
+          time_window: 300_500_ms
+          hypothesis_id: REC_PRIMARY_EARLY_FRONTOCENTRAL
+        - roi: centroparietal
+          time_window: 500_800_ms
+          hypothesis_id: REC_PRIMARY_LATE_CENTROPARIETAL
+        - roi: parietal
+          time_window: 500_800_ms
+          hypothesis_id: REC_PRIMARY_LATE_PARIETAL
+      crossover_status: EXPLORATORY
+      error_condition_status: SECONDARY
+      difference_wave_status: DESCRIPTIVE
+    minimum_trials:
+      hit: 20
+      miss: 10
+      false_alarm: 10
+      correct_rejection: 20
+      difference_wave: 20
+    difference_wave:
+      enabled: true
+      name: hit_minus_correct_rejection
+      label: Hit - Correct Rejection
+      minuend: hit
+      subtrahend: correct_rejection
+      filename: difference_wave-ave.fif
+    conditions:
+      hit:
+        label: Hit
+        criteria:
+          old_new_status: old
+          recognition_response: "yes"
+      miss:
+        label: Miss
+        criteria:
+          old_new_status: old
+          recognition_response: "no"
+      false_alarm:
+        label: False Alarm
+        criteria:
+          old_new_status: new
+          recognition_response: "yes"
+      correct_rejection:
+        label: Correct Rejection
+        criteria:
+          old_new_status: new
+          recognition_response: "no"
+  cuteness:
+    enabled: true
+    analysis_mode: categorical_and_continuous
+    condition_column: kawaii_rating
+    fallback_condition_columns: [kawaii_rating_metadata, M_Kawaii]
+    require_all_conditions: false
+    picks: eeg
+    channels: []
+    plotting:
+      exclude_channels: [T1, T2]
+      exclude_channels_rationale: T1/T2 are unresolved legacy temporal labels in the standard_1005 montage for these recordings; they are excluded from Gate 4B figures only to avoid overlapping-position plotting failures. ERP averages and ROI measurements are otherwise unchanged.
+    latency_window_s: [0.0, 1.0]
+    measurement_time_windows:
+      300_500_ms:
+        label: 300-500 ms
+        start_ms: 300
+        end_ms: 500
+      500_800_ms:
+        label: 500-800 ms
+        start_ms: 500
+        end_ms: 800
+    topography_time_windows:
+      300_500_ms:
+        label: 300-500 ms
+        start_ms: 300
+        end_ms: 500
+      500_800_ms:
+        label: 500-800 ms
+        start_ms: 500
+        end_ms: 800
+    topography_conditions: [low, high]
+    minimum_trials:
+      low: 10
+      medium_low: 10
+      medium_high: 10
+      high: 10
+    continuous:
+      enabled: true
+      columns: [M_Kawaii, kawaii_rating]
+      description: Participant-level predictor summaries only; no regression or group statistics are run in Gate 4B.
+    primary_model:
+      enabled: true
+      model_id: cuteness_primary_continuous_500_800_centroparietal
+      hypothesis_family: cuteness_primary_continuous
+      hypothesis_id: CUT_PRIMARY_CENTERED_CUTENESS_500_800_CENTROPARIETAL
+      analysis_status: PRIMARY
+      window:
+        name: 500_800_ms
+        start_ms: 500
+        end_ms: 800
+        interval: closed_inclusive
+      roi:
+        name: centroparietal
+        channels: [Cz, CP1, CP2, Pz]
+        completeness_rule: all_channels_required
+      rating_column: kawaii_rating
+      arousal_column: arousal_rating
+      item_column: image_filename
+      old_new_column: old_new_status
+      old_new_reference: new
+      full_formula: ERP_mean_uv ~ cuteness_centered + old_new_old + arousal_centered
+      reduced_formula: ERP_mean_uv ~ cuteness_centered + old_new_old
+      random_intercepts: [participant, item_id]
+      optimizer: lbfgs
+      fit_method: maximum_likelihood
+    difference_wave:
+      enabled: false
+    conditions:
+      low:
+        label: Low
+        range:
+          column: kawaii_rating
+          min: 1
+          max: 2
+      medium_low:
+        label: Medium-Low
+        range:
+          column: kawaii_rating
+          min: 3
+          max: 4
+      medium_high:
+        label: Medium-High
+        range:
+          column: kawaii_rating
+          min: 5
+          max: 6
+      high:
+        label: High
+        range:
+          column: kawaii_rating
+          min: 7
+          max: 9
+
+triggers:
+  ########################################
+  # TRIGGER CODES
+  ########################################
+  image_onset:
+    old: 120
+    new: 121
+  recognition_response:
+    "yes": 150
+    "no": 151
+  kawaii_question_trial_digit:
+    min: 100
+    max: 109
+  kawaii_rating_response:
+    min: 11
+    max: 19
+  arousal_question_trial_group:
+    min: 200
+    max: 239
+  arousal_rating_response:
+    min: 21
+    max: 29
+
+channels:
+  ########################################
+  # CHANNEL SETTINGS
+  ########################################
+  channel_name_aliases:
+    FPz: Fpz
+    FP1: Fp1
+    FP2: Fp2
+  eeg:
+    expected_count: 64
+    expected_names:
+      - Cz
+      - FCz
+      - FC2
+      - CP2
+      - CP1
+      - FC1
+      - Fz
+      - F2
+      - FC4
+      - C4
+      - CP4
+      - P2
+      - Pz
+      - P1
+      - CP3
+      - C3
+      - FC3
+      - F1
+      - AFz
+      - AF4
+      - F6
+      - FC6
+      - C6
+      - CP6
+      - PO4
+      - PO2
+      - PO1
+      - PO3
+      - CP5
+      - C5
+      - FC5
+      - F5
+      - AF3
+      - Fpz
+      - Fp2
+      - AF8
+      - FT8
+      - T8
+      - TP8
+      - P8
+      - O2
+      - Oz
+      - O1
+      - P7
+      - TP7
+      - T7
+      - FT7
+      - AF7
+      - Fp1
+      - T2
+      - T10
+      - P10
+      - PO10
+      - Iz
+      - PO9
+      - P9
+      - T9
+      - T1
+    eog:
+      - IO1
+      - IO2
+    unused:
+      - LO1
+      - LO2
+      - ECG1
+      - ECG2
+    misc: []
+    exclude_from_eeg_qc:
+      - LO1
+      - LO2
+      - ECG1
+      - ECG2
+      - CPz
+    exclude_from_reference:
+      - LO1
+      - LO2
+      - ECG1
+      - ECG2
+    exclude_from_ica:
+      - LO1
+      - LO2
+      - ECG1
+      - ECG2
+      - CPz
+    exclude: []
+  channel_name_overrides: {}
+
+rois:
+  ########################################
+  # ROI DEFINITIONS
+  ########################################
+  frontal:
+    channels: [Fz, F1, F2, FCz]
+  central:
+    channels: [Cz, FCz, CPz]
+  parietal:
+    channels: [Pz, P1, P2, CPz]
+  occipital:
+    channels: [Oz, O1, O2]
+
+participants:
+  ########################################
+  # PARTICIPANT DEFAULTS
+  ########################################
+  defaults:
+    included:
+      - synthetic001
+      - synthetic002
+    excluded: []
+  validation:
+    allowed_prefixes: [synthetic]
+    numeric_width: 3
+    prefix_numeric_widths:
+      synthetic: 3
+  eeg_file_map: {}
+
+analysis:
+  ########################################
+  # GROUP-LEVEL AGGREGATION SELECTION
+  ########################################
+  include_subjects:
+    - synthetic001
+    - synthetic002
+  exclude_subjects: []
+  exclusion_reasons: {}
+
+response_timing_qc:
+  output_dir: response_timing_qc
+  behavioral_rt_anchor: key_down
+  eeg_response_marker_anchor: post_key_release_trigger
+  discrepancy_interpretation: composite_timing_discrepancy
+  trigger_delay_interpretation: trigger_write_overhead_only
+  fixed_marker_correction_s: null
+  participant_median_correction: false
+  response_locked_inference: NOT_VALIDATED_NOT_APPROVED
+  stimulus_locked_erp_status: UNAFFECTED
+  response_types:
+    recognition:
+      behavioural_rt: recognition_rt_s
+      timeout: recognition_timeout
+      onset_sample: image_onset_sample
+      response_sample: recognition_response_sample
+      onset_code: image_onset_code
+      response_code: recognition_response_code
+      trigger_event_prefix: recognition_response
+    kawaii:
+      behavioural_rt: kawaii_rt_s
+      timeout: kawaii_timeout
+      onset_sample: kawaii_question_sample
+      response_sample: kawaii_response_sample
+      onset_code: kawaii_question_code
+      response_code: kawaii_response_code
+      trigger_event_prefix: kawaii_rating_response
+    arousal:
+      behavioural_rt: arousal_rt_s
+      timeout: arousal_timeout
+      onset_sample: arousal_question_sample
+      response_sample: arousal_response_sample
+      onset_code: arousal_question_code
+      response_code: arousal_response_code
+      trigger_event_prefix: arousal_rating_response
+
+statistics:
+  ########################################
+  # GATE 5C ROI/TIME-WINDOW STATISTICS
+  ########################################
+  alpha: 0.05
+  multiple_comparison_correction: holm
+  paired_test: paired_t
+  fallback_paired_test: wilcoxon
+  normality_test: shapiro
+  effect_size: auto
+  technical_minimum_pairs: 2
+  scientific_interpretation_minimum_n: null
+  scientific_interpretation_rule: Final-cohort adequacy is not represented by a fabricated numeric cutoff; until the final sample is available, inferential outputs are provisional pipeline-validation results.
+  confidence_level: 0.95
+  minimum_normality_n: 3
+  recognition:
+    comparisons:
+      - name: hit_vs_correct_rejection
+        condition_a: hit
+        condition_b: correct_rejection
+        label: Hit vs Correct Rejection
+        analysis_status: PRIMARY
+        hypothesis_family: recognition_primary_old_new
+        cells:
+          - {roi: frontal, time_window: 300_500_ms, hypothesis_id: REC_PRIMARY_EARLY_FRONTAL}
+          - {roi: frontocentral, time_window: 300_500_ms, hypothesis_id: REC_PRIMARY_EARLY_FRONTOCENTRAL}
+          - {roi: centroparietal, time_window: 500_800_ms, hypothesis_id: REC_PRIMARY_LATE_CENTROPARIETAL}
+          - {roi: parietal, time_window: 500_800_ms, hypothesis_id: REC_PRIMARY_LATE_PARIETAL}
+      - name: hit_vs_miss
+        condition_a: hit
+        condition_b: miss
+        label: Hit vs Miss
+        analysis_status: SECONDARY
+        hypothesis_family: recognition_secondary_memory_success
+      - name: correct_rejection_vs_false_alarm
+        condition_a: correct_rejection
+        condition_b: false_alarm
+        label: Correct Rejection vs False Alarm
+        analysis_status: SECONDARY
+        hypothesis_family: recognition_secondary_response_accuracy
+    difference_wave_conditions: []
+  cuteness:
+    categorical_comparisons: descriptive_only
+    continuous:
+      enabled: false
+      predictor_columns: [kawaii_rating, M_Kawaii]
+      method: spearman
+      reason: Replaced as primary inference by the Phase 2C trial-level crossed-intercept mixed model; categorical and aggregate summaries remain descriptive.
+
+manual_overrides:
+  ########################################
+  # MANUAL OVERRIDES
+  ########################################
+  bad_channels: {}
+  ignore_channels: {}
+  exclude_recording_parts: {}
+  exclude_trials: {}
+  preprocessing_thresholds: {}
+  bad_segments: {}
+  ica_components: {}
+  notes: {}

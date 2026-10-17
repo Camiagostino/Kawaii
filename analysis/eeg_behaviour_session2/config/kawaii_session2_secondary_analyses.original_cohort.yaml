@@ -1,0 +1,99 @@
+schema_version: kawaii_session2_secondary_analyses_v1
+analysis_scope: SECONDARY_AND_EXPLORATORY
+primary_analysis_unchanged: true
+core_config_path: config/session2_eeg.yaml
+figure_style_path: config/kawaii_session2_figure_style.yaml
+figure_style_sha256: 21bea988724e5a4c154af7347786d26d1b610b6f6b5dd3390df364428dee31d4
+output_dir: workspace/kawaii/session2/secondary_analyses
+participants:
+- sub005
+- sub009
+- sub010
+- sub011
+- sub012
+- sub013
+- sub014
+- sub015
+inputs:
+  recognition_measurements: workspace/kawaii/session2/analysis/group/recognition/recognition_measurements_all.csv
+  recognition_statistics: workspace/kawaii/session2/analysis/group/recognition/statistics/recognition_statistics.csv
+  cuteness_mixed_model_coefficients: workspace/kawaii/session2/analysis/group/cuteness/statistics/cuteness_mixed_model_coefficients.csv
+  recognition_grand_average_fif: workspace/kawaii/session2/analysis/group/recognition/grand_average_erps-ave.fif
+  cuteness_mixed_model_diagnostics: workspace/kawaii/session2/analysis/group/cuteness/statistics/cuteness_mixed_model_diagnostics.csv
+  cuteness_mixed_model_specification: workspace/kawaii/session2/analysis/group/cuteness/statistics/cuteness_mixed_model_specification.csv
+recognition_cells:
+- roi: frontal
+  time_window: 300_500_ms
+  label: Frontal · 300–500 ms
+- roi: frontocentral
+  time_window: 300_500_ms
+  label: Frontocentral · 300–500 ms
+- roi: centroparietal
+  time_window: 500_800_ms
+  label: Centroparietal · 500–800 ms
+- roi: parietal
+  time_window: 500_800_ms
+  label: Parietal · 500–800 ms
+families:
+  recognition_secondary_memory_outcome:
+    name: recognition_secondary_memory_outcome
+    correction: holm
+    family_size: 8
+    analysis_status: SECONDARY
+    comparisons:
+    - name: hit_vs_miss
+      condition_a: hit
+      condition_b: miss
+      label: Hit vs Miss
+    - name: false_alarm_vs_correct_rejection
+      condition_a: false_alarm
+      condition_b: correct_rejection
+      label: False Alarm vs Correct Rejection
+  recognition_true_vs_false_exploratory:
+    name: recognition_true_vs_false_exploratory
+    correction: holm
+    family_size: 4
+    analysis_status: EXPLORATORY
+    comparisons:
+    - name: hit_vs_false_alarm
+      condition_a: hit
+      condition_b: false_alarm
+      label: Hit vs False Alarm
+  rating_memory_association:
+    name: rating_memory_association
+    correction: holm
+    family_size: 4
+    analysis_status: EXPLORATORY
+    implementation_status: IMPLEMENTED
+    comparisons:
+    - name: cuteness_hit_vs_miss
+      label: Cuteness · Hit vs Miss
+      rating: cuteness
+      rating_column: kawaii_rating
+      condition_a: hit
+      condition_b: miss
+    - name: cuteness_false_alarm_vs_correct_rejection
+      label: Cuteness · False Alarm vs Correct Rejection
+      rating: cuteness
+      rating_column: kawaii_rating
+      condition_a: false_alarm
+      condition_b: correct_rejection
+    - name: arousal_hit_vs_miss
+      label: Arousal · Hit vs Miss
+      rating: arousal
+      rating_column: arousal_rating
+      condition_a: hit
+      condition_b: miss
+    - name: arousal_false_alarm_vs_correct_rejection
+      label: Arousal · False Alarm vs Correct Rejection
+      rating: arousal
+      rating_column: arousal_rating
+      condition_a: false_alarm
+      condition_b: correct_rejection
+existing_arousal_coefficient:
+  implementation_status: IMPLEMENTED
+  model_id: cuteness_primary_continuous_500_800_centroparietal
+  coefficient: arousal_centered
+  refit_allowed: false
+  analysis_status: SECONDARY
+response_locked_inference: NOT_VALIDATED_NOT_APPROVED

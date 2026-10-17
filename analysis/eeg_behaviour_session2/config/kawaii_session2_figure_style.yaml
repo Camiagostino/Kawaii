@@ -1,0 +1,138 @@
+schema_version: kawaii_session2_figure_style_v1
+
+dpi: 320
+figure_facecolor: "#FFFFFF"
+
+fonts:
+  title_size: 13
+  panel_title_size: 10.5
+  difference_title_size: 11.5
+  axis_label_size: 11
+  tick_label_size: 9.5
+  legend_size: 9.5
+  compact_legend_size: 8.5
+
+legend:
+  location: best
+  frameon: false
+  columns: 1
+  shared_roi: true
+  shared_location: upper center
+  shared_columns: 4
+  shared_bbox_to_anchor: [0.5, 0.955]
+
+axes:
+  grid: false
+  grid_axis: y
+  grid_alpha: 0.12
+  hide_top_spine: true
+  hide_right_spine: true
+  spine_color: "#B8C0C8"
+  spine_width: 0.8
+  reference_alpha: 0.55
+
+line_widths:
+  waveform: 2.0
+  roi_waveform: 2.0
+  secondary_waveform: 1.65
+  secondary_roi_waveform: 1.65
+  difference_waveform: 2.2
+  reference: 0.75
+  participant_roi_reference: 0.7
+
+line_styles:
+  recognition_conditions:
+    hit: solid
+    correct_rejection: solid
+    miss: dashed
+    false_alarm: dashed
+    hit_minus_correct_rejection: solid
+  cuteness_bins:
+    low: solid
+    medium_low: solid
+    medium_high: solid
+    high: solid
+
+labels:
+  branches:
+    recognition: Recognition
+    cuteness: Cuteness
+  conditions:
+    hit: Hit
+    miss: Miss
+    correct_rejection: Correct rejection
+    false_alarm: False alarm
+    hit_minus_correct_rejection: "Hit − Correct rejection"
+    low: Low
+    medium_low: Medium-low
+    medium_high: Medium-high
+    high: High
+
+colors:
+  recognition_conditions:
+    hit: "#173B63"
+    miss: "#6F8496"
+    false_alarm: "#4F7774"
+    correct_rejection: "#7B4B47"
+    hit_minus_correct_rejection: "#333A40"
+  cuteness_bins:
+    low: "#B9C6CF"
+    medium_low: "#6C9D99"
+    medium_high: "#536F91"
+    high: "#163A5F"
+  bars:
+    default: "#4C78A8"
+    included: "#4C78A8"
+    excluded: "#E45756"
+    threshold_met: "#4C78A8"
+    threshold_failed: "#E45756"
+    effect_size: "#2A9D8F"
+  difference_waveform: "#333A40"
+  reference: "#7C8793"
+  primary_window: "#D9DEE3"
+
+topography:
+  colormap: kawaii_signed_voltage
+  difference_colormap: kawaii_signed_voltage
+  colormap_colors:
+    - "#123B4A"
+    - "#5E8583"
+    - "#F2F1ED"
+    - "#99665C"
+    - "#5A2330"
+  symmetric_voltage_limits: true
+  center_difference_at_zero: true
+  common_condition_scale: true
+  contour_count: 5
+  contour_color: "#56616A"
+  contour_line_width: 0.45
+  contour_alpha: 0.55
+  sensor_color: "#4E5962"
+  sensor_size: 2.0
+  sensor_alpha: 0.72
+  colorbar_unit_size: 8.5
+
+figure_sizes:
+  waveform: [8.2, 4.6]
+  difference_waveform: [8.2, 4.6]
+  trial_count: [8.0, 4.5]
+  participant_trial_count: [9.0, 4.5]
+  inclusion: [5.5, 4.0]
+  statistics: [8.0, 4.5]
+  topography: [4.8, 3.8]
+  group_roi_waveform:
+    width: 8.6
+    minimum_height: 3.0
+    height_per_panel: 2.15
+  participant_roi_waveform:
+    width: 8.0
+    minimum_height: 3.0
+    height_per_panel: 2.4
+  effect_size:
+    width: 10.0
+    minimum_height: 4.5
+    height_per_row: 0.25
+
+primary_window_shading:
+  enabled: true
+  alpha: 0.09

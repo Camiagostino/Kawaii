@@ -1,0 +1,27 @@
+# User-supplied data and generated state must never be committed.
+data/
+outputs/
+user_state/
+.tmp/
+
+# Local Python and test state.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Kawaii collaborator-local data and configuration
+workspace/
+docs/personal_docs/
+config/session2_eeg.yaml
+config/kawaii_session2_secondary_analyses.yaml
+*.fif
+*.eeg
+*.vhdr
+*.vmrk
+*.edf
+*.bdf
+*.set
+*.fdt
+*.mat

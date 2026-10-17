@@ -1,0 +1,5 @@
+# EEG analysis/runtime profile.
+# Direct dependency ownership and compatible bounds live in pyproject.toml.
+# For the historical Phase 4 WSL2 resolution snapshot, see:
+#   requirements/constraints-wsl2-py311-entry.txt
+-e .

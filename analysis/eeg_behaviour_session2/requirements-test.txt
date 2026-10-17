@@ -1,0 +1,4 @@
+# Fixture-independent analysis/test profile. Pilot data are governed separately.
+# Reproduce the Phase 4 WSL2 entry resolution with:
+#   uv pip install --constraint requirements/constraints-wsl2-py311-entry.txt -r requirements-test.txt
+-e .[test]

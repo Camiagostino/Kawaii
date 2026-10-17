@@ -1,0 +1,34 @@
+[project]
+name = "eeg-software"
+version = "0.1.0"
+description = "Reusable EEG analysis software with a validated Kawaii Session 2 workflow"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "matplotlib>=3.11,<3.12",
+    "mne>=1.13,<1.14",
+    "numpy>=2.4,<2.5",
+    "openpyxl>=3.1,<4",
+    "pandas>=3.0,<3.1",
+    "PyYAML>=6.0,<7",
+    "scipy>=1.17,<1.18",
+    "statsmodels>=0.15,<0.16",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.1,<10"]
+
+[project.scripts]
+kawaii-session2-eeg = "eeg_software.workflows.kawaii_session2.application_cli:main"
+
+[build-system]
+requires = ["setuptools>=84,<85", "wheel>=0.48,<0.49"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "pilot_data: requires the external identity-verified Kawaii pilot corpus",
+]

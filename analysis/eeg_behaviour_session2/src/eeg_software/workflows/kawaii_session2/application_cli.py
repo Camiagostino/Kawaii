@@ -83,11 +83,19 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("recognition-behavior", "recognition-outcome-erp", "true-vs-false-erp", "rating-memory", "arousal-erp"),
         default=("recognition-behavior", "rating-memory"),
     )
+    cuteness = subcommands.add_parser(
+        "cuteness", help="Generate descriptive cuteness ERPs from selected rating authorities."
+    )
+    from .cuteness_rating_workflow import add_arguments as add_cuteness_arguments
+    add_cuteness_arguments(cuteness)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "cuteness":
+        from .cuteness_rating_workflow import run_namespace as run_cuteness
+        return run_cuteness(args)
     if args.command == "operations":
         for operation in Operation:
             if operation is not Operation.COORDINATED:

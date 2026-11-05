@@ -103,3 +103,15 @@ python -m pytest -q
 ```
 
 The shared tests use synthetic fixtures and do not require original participant data.
+
+## Report-only rating-source figures
+
+For exploratory cuteness ERP waveforms grouped by **participant ratings**, **AAPS score-defined normative ratings**, or **both**, run `python tools/run_kawaii_cuteness_report_figures.py --help`. The input must be an existing, authenticated group publication and/or a separately authorised NORM-02 summary ZIP. **No EEG processing or model fitting occurs.**
+
+See [Report-only cuteness rating-source figures](docs/CUTENESS_RATING_SOURCE_REPORT_FIGURES.md) for commands, source requirements, output manifests, and scientific/privacy limits. Normative figures are exploratory and not yet approved for public results reporting.
+
+## Unified descriptive cuteness analysis
+
+Run `kawaii-session2-eeg cuteness --help` to select `--rating-source participant`, `normative` or `both` from a single entry point. Participant mode uses an existing accepted Gate 5B publication; normative mode can reuse an authorised summary ZIP or compute **descriptive** waveforms from already corrected, authenticated Gate 3C epochs and a private SHA-pinned AAPS reference. This is **not** a new preprocessing, ICA, QC or inferential analysis. Always use a new private output directory and provide explicit sub012-exposure acknowledgement for normative modes.
+
+See [Unified descriptive cuteness analysis](docs/CUTENESS_UNIFIED_ANALYSIS.md) for commands, source requirements, output contracts and unresolved scientific approvals. The narrower figure-only selector remains available as a separate tool.

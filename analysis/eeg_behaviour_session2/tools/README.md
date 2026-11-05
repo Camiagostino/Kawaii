@@ -11,3 +11,11 @@ The supported operator interface is `kawaii-session2-eeg`. For secondary analyse
 | `verify_kawaii_source_exposure_snapshot.py` | Verify source-exposure snapshot | Controlled scientific verification |
 
 Do not invoke internal recovery tools just to run ordinary Session 2 analyses. They can have specialised input contracts or production-write modes. This inventory is for developer navigation and **is not automatically a list of scripts for the collaborator release**.
+
+## Unified report-only rating-source selector
+
+`run_kawaii_cuteness_report_figures.py` renders existing descriptive ERP figures using `--rating-source participant|normative|both` and separate authenticated inputs. This is a **report-only**, cohort-specific command, not a new preprocessing/ERP aggregation pipeline or an inferential analysis. See [`docs/CUTENESS_RATING_SOURCE_REPORT_FIGURES.md`](../docs/CUTENESS_RATING_SOURCE_REPORT_FIGURES.md). Normative outputs are exploratory and require scientific approval before external use.
+
+## Unified descriptive analysis command
+
+`run_kawaii_cuteness_analysis.py` is a thin alternative entry point for `kawaii-session2-eeg cuteness --rating-source participant|normative|both`. It wraps the existing authenticated participant publication and NORM-02 descriptive computation/archive reuse. `run_kawaii_norm02_exploratory.py` is an **advanced**, deliberately cohort-specific normative computation helper, not a general AAPS classifier or EEG preprocessing command. See [`docs/CUTENESS_UNIFIED_ANALYSIS.md`](../docs/CUTENESS_UNIFIED_ANALYSIS.md).

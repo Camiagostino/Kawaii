@@ -9,7 +9,7 @@ python -m pip install -e ".[test]"
 python -m pytest -q
 ```
 
-The curated release keeps **38** `test_*.py` files (including the collaborator example-config and release-contract tests). Tests exercise signal/QC, analysis logic, provenance/identity and the Kawaii EEG/behavioural CLI using synthetic examples. They must run **without** `config/session2_eeg.yaml`, participant recordings or pilot fixtures. The config example is tested using a temporary filesystem fixture.
+The curated release keeps **43** `test_*.py` files (including the collaborator example-config and release-contract tests). Tests exercise signal/QC, analysis logic, provenance/identity and the Kawaii EEG/behavioural CLI using synthetic examples. They must run **without** `config/session2_eeg.yaml`, participant recordings or pilot fixtures. The config example is tested using a temporary filesystem fixture.
 
 The full historical development test suite remains in the original local research repository. It includes study-cohort fingerprint and results regressions, Phase 2b validation scripts, R11 recovery/publishing checks and tests dependent on the internal configuration and authorised data. Their absence from the collaborator release is **not** evidence that those scientific obligations were waived or passed.
 

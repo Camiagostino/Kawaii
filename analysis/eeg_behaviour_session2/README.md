@@ -1,10 +1,10 @@
 # Kawaii study — Session 2 EEG and behavioural analyses
 
-This repository contains **Session 2 EEG preprocessing, recognition/cuteness ERP analyses, behavioural recognition and rating analyses**, study configurations, tests and supporting experimental-task scripts.
+This directory contains **Session 2 EEG preprocessing, recognition/cuteness ERP analyses, behavioural recognition and rating analyses**, study configurations, tests and experimental-task scripts.
 
 ## Quick start
 
-Use **Python 3.11**, preferably on Linux/WSL2. From the analysis directory (containing `pyproject.toml`):
+Use **Python 3.11**, preferably on Linux/WSL2. From `analysis/eeg_behaviour_session2/` (the directory containing `pyproject.toml`):
 
 ```bash
 python3.11 -m venv .venv
@@ -12,32 +12,30 @@ source .venv/bin/activate
 python -m pip install -e .
 ```
 
-On Windows PowerShell, if Python 3.11 is installed, create the environment with `py -3.11 -m venv .venv` and activate it with `.\.venv\Scripts\Activate.ps1`. Dependencies are installed from `pyproject.toml`.
+On Windows PowerShell, create the environment with `py -3.11 -m venv .venv` and activate it with `.\.venv\Scripts\Activate.ps1`.
 
-**Before running analyses:** prepare the study configuration and make the approved data and QC/ICA decisions available. For the original cohort, copy the `.original_cohort.yaml` configurations to the local working filenames below; for new datasets, start from the corresponding `.example.yaml` files.
+Before running analyses, prepare local configurations from the files in `config/`:
 
-| Local working configuration (Git-ignored) | Controls |
+| Local configuration (Git-ignored) | Purpose |
 |---|---|
 | `config/session2_eeg.yaml` | EEG parameters, participants, source paths and QC settings |
-| `config/kawaii_session2_secondary_analyses.yaml` | Behavioural/secondary analyses, participant selection and input/output paths |
+| `config/kawaii_session2_secondary_analyses.yaml` | Behavioural/secondary analyses, participants and input/output paths |
 
-The original-cohort configurations are included in `config/`, but **their source paths and selected outputs must still be verified**. In particular, the original secondary configuration points to historical group-output paths, not automatically to the accepted corrected results. See the [Study analysis guide](docs/STUDY_ANALYSIS_GUIDE.md).
+Use the corresponding `.example.yaml` templates for another dataset, or the `.original_cohort.yaml` configurations when reproducing the original study. Verify all file paths and source identities; the original secondary configuration may point to historical output directories rather than the intended input generation. Keep working configurations and study data outside version control.
 
 ## Running the analyses
 
-The `kawaii-session2-eeg` command runs the EEG and behavioural workflows. Run these commands from the analysis directory after activating the Python environment.
+The `kawaii-session2-eeg` command runs the EEG and behavioural workflows. Run commands from the analysis directory after activating the environment. Use `kawaii-session2-eeg --help` and its subcommand help for additional options.
 
 ### EEG analysis
 
 | Stage | What it does | Command |
 |---|---|---|
-| 1. Participant EEG processing | Preprocessing, ICA, QC and epoching | `kawaii-session2-eeg participant gate3 --subjects SUBJECT_ID` |
-| 2. Participant ERPs | Recognition and cuteness analyses | `kawaii-session2-eeg participant recognition --subjects SUBJECT_ID` and `kawaii-session2-eeg participant cuteness --subjects SUBJECT_ID` |
-| 3. Group results | Aggregate results, generate figures and run statistics | Run the three commands below |
+| Participant EEG processing | Preprocessing, ICA, QC and epoching | `kawaii-session2-eeg participant gate3 --subjects SUBJECT_ID` |
+| Participant ERPs | Recognition and cuteness analyses | `kawaii-session2-eeg participant recognition --subjects SUBJECT_ID` and `kawaii-session2-eeg participant cuteness --subjects SUBJECT_ID` |
+| Group analysis | Aggregation, figures and statistics | Commands below |
 
-Replace `SUBJECT_ID` with an approved participant identifier. Processing may require manual bad-channel and ICA review before continuing.
-
-After processing participants, run the group stages in order:
+Replace `SUBJECT_ID` with the intended identifier and configure its source files. EEG processing may require manual bad-channel and ICA review before later stages can run. After the participant analyses:
 
 ```bash
 kawaii-session2-eeg group prepare
@@ -45,55 +43,86 @@ kawaii-session2-eeg group figures
 kawaii-session2-eeg group statistics
 ```
 
-### Behavioural analysis
-
-The behavioural workflow calculates recognition performance (including **d′ and response bias**) and examines associations between ratings and recognition.
-
-After preparing `config/kawaii_session2_secondary_analyses.yaml` with the intended inputs:
+To add participants to an existing study, prepare their recording, Session 1 exposure/recognition evidence, Session 2 logs, schedule and reviewed source records. Inspect the intake before writing changes:
 
 ```bash
-# Check inputs without generating results
-kawaii-session2-eeg behaviour --check-inputs
+kawaii-session2-eeg participant intake --subjects SUBJECT_ID --dry-run
+```
 
-# Run the analysis
+Review the dry-run output and approved study configuration before invoking intake without `--dry-run`. The intake expects the corresponding experiment's source-exposure authority; it does not construct an unverified authority from an empty dataset.
+
+### Behavioural and secondary analysis
+
+The behavioural workflow calculates recognition performance (including **d′ and response bias**) and associations between ratings and recognition. After preparing `config/kawaii_session2_secondary_analyses.yaml`:
+
+```bash
+kawaii-session2-eeg behaviour --check-inputs
 kawaii-session2-eeg behaviour
 ```
 
-Results are saved to the configured output directory. Behavioural recognition uses source-verified behavioural records and approved eligibility, **not EEG artefact rejection**.
+The behavioural workflow uses source-verified behavioural records and approved eligibility, **not EEG artefact rejection**.
 
-### Additional analyses and options
+For optional secondary ERP comparisons, inspect the input tables and use the corresponding stages:
 
-Exploratory ERP comparisons, response-timing QC, participant intake and advanced options are described in the [Study analysis guide](docs/STUDY_ANALYSIS_GUIDE.md). Use `kawaii-session2-eeg --help` to see available commands.
+```bash
+kawaii-session2-eeg secondary --stages true-vs-false-erp --check-inputs
+kawaii-session2-eeg secondary --stages true-vs-false-erp
+```
 
-By default, `--config` uses `config/session2_eeg.yaml` and `--secondary-config` uses `config/kawaii_session2_secondary_analyses.yaml`. Supply either flag to select a different file; `--root` selects another analysis directory.
+Other available stages include `recognition-outcome-erp` and `arousal-erp`; use `kawaii-session2-eeg secondary --help` for their options. The arousal stage reads an existing coefficient rather than fitting a new model.
+
+### Descriptive cuteness ERP curves
+
+Use the same command to render ERP curves categorised by **participant ratings**, **normative AAPS ratings**, or **both**. These are separate rating sources, and this command does not rerun EEG preprocessing or fit a continuous normative model.
+
+| Rating source | Required input | Categories |
+|---|---|---|
+| `participant` | Authenticated group publication, supplied with `--source-root` | Participant cuteness ratings: 1–2, 3–4, 5–6 and 7–9 |
+| `normative` | Authenticated descriptive archive, supplied with `--normative-archive` | AAPS cuteness scores: lower ≤5.0 and higher >6.5 |
+| `both` | Both inputs | Separate figures for each rating source |
+
+```bash
+kawaii-session2-eeg cuteness --rating-source participant \
+  --source-root /path/to/group-publication \
+  --output-dir /path/to/new/participant-curves
+
+kawaii-session2-eeg cuteness --rating-source normative \
+  --normative-archive /path/to/normative-summary.zip \
+  --output-dir /path/to/new/normative-curves
+
+kawaii-session2-eeg cuteness --rating-source both \
+  --source-root /path/to/group-publication \
+  --normative-archive /path/to/normative-summary.zip \
+  --output-dir /path/to/new/both-curves
+```
+
+Select a **new output directory outside the checkout**. The source archive must contain its expected provenance and matching waveform/participant metadata; archive integrity checks do not supply the underlying data or grant access rights. For reproducing the original study's normative aggregation rather than using an existing archive, inspect `kawaii-session2-eeg cuteness --help` and use the explicit `--reproduce-original-cohort` mode with its required original sources and eligibility checks. That mode is not intended for alternative cohorts.
+
+The `--root` flag selects another analysis directory; `--config` and `--secondary-config` select alternative YAML configurations.
 
 ## Study code layout
 
 ```text
-config/                 Scientific parameters and configuration templates
+config/                 Scientific settings and configuration templates
 src/eeg_software/
   workflows/kawaii_session2/
     participant_workflow.py   Participant EEG and ERP stages
     group_workflow.py         Group-level EEG analyses
     secondary_analyses/       Behavioural and additional ERP analyses
     application_cli.py        Command-line interface
-tools/                  Additional reporting and verification utilities
-scripts/                Compatibility directory; not a normal analysis entry point
-tests/                  Synthetic tests and analysis contracts
+tools/                  Additional utilities
+scripts/                Compatibility directory
+tests/                  Synthetic tests
 matlab/                 Experimental-task and schedule scripts
-docs/                   Analysis instructions and supporting documentation
 ```
 
-The actual EEG processing is implemented across modules such as `preprocessing.py`, `ica.py`, `epoching.py` and `erp.py`, not solely in `participant_workflow.py`.
+EEG processing is implemented across modules including `preprocessing.py`, `ica.py`, `epoching.py` and `erp.py`.
 
-## Data, configuration and reproducibility
+## Data and reproducibility
 
-- **Study data are not bundled.** Use approved storage for EEG recordings, behavioural logs, source-exposure records and manual QC/ICA decisions.
-- Scientific settings (filtering, referencing, ICA, epoching, artefact rejection and ERP analyses) are defined in the EEG configuration. Keep validated settings unchanged unless the group approves a methodological revision.
-- The **original-cohort configuration** uses local `workspace/` paths extensively. The **example configuration** illustrates `data/`, `outputs/` and `user_state/` directories. These local directories are excluded from Git; their locations are configurable.
-- Check secondary ERP input tables against the intended accepted analysis generation. `--check-inputs` validates selected files but does **not** independently establish publication lineage. Avoid overwriting accepted results.
+Study data are **not bundled**. Obtain approved EEG recordings, behavioural and exposure records, local configuration, and reviewed QC/ICA decisions from the study's authorised storage. Keep inputs and generated results outside Git. When reproducing an existing analysis, verify the selected source and output generations before running the corresponding stage; do not overwrite accepted outputs.
 
-See [Reproduce the existing study](docs/REPRODUCE_EXISTING_STUDY.md) or [Analyse additional participants](docs/ADD_NEW_PARTICIPANTS.md) for detailed requirements.
+For the Session 2 acquisition task and schedule-generation instructions, see [`matlab/README_SESSION2_recognition_task.md`](matlab/README_SESSION2_recognition_task.md).
 
 ## Tests
 
@@ -102,10 +131,4 @@ python -m pip install -e ".[test]"
 python -m pytest -q
 ```
 
-The shared tests use synthetic fixtures and do not require original participant data.
-
-## Descriptive cuteness rating sources
-
-Run `kawaii-session2-eeg cuteness --help` to render descriptive ERP curves from an authenticated participant-rated group publication, an authorised normative summary archive, or both. The sources and category provenance remain separate; normative categories are score-defined as lower <=5.0 and higher >6.5. This command performs no EEG preprocessing or inferential modelling, and no continuous normative model is implemented.
-
-See [Descriptive cuteness rating sources](docs/CUTENESS_UNIFIED_ANALYSIS.md) for the concise input and reproduction-mode contracts.
+The portable test suite uses synthetic fixtures and does not require participant recordings or the private AAPS reference.

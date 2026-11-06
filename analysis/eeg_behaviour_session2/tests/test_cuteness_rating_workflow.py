@@ -60,7 +60,9 @@ def test_participant_uses_published_figures_not_epoch_aggregation(tmp_path, monk
     root, pub = _root(tmp_path)
     calls = _fake_calls(monkeypatch)
     dest = tmp_path / "participant_results"
-    out = workflow.execute(root=root, output_dir=dest, rating_source="participant")
+    out = workflow.execute(
+        root=root, output_dir=dest, rating_source="participant", source_root=pub
+    )
     assert out == dest
     assert [name for name, _ in calls] == ["run_kawaii_cuteness_report_figures.py"]
     fig_args = calls[0][1]
@@ -77,7 +79,7 @@ def test_normative_reuses_verified_archive_without_regenerating(tmp_path, monkey
     calls = _fake_calls(monkeypatch)
     dest = tmp_path / "from_archive"
     workflow.execute(root=root, output_dir=dest, rating_source="normative",
-                     normative_archive=archive, acknowledge_sub012_exploratory=True)
+                     normative_archive=archive)
     assert [name for name, _ in calls] == ["run_kawaii_cuteness_report_figures.py"]
     fig_args = calls[0][1]
     assert Path(fig_args[fig_args.index("--normative-archive") + 1]) == archive
@@ -94,7 +96,8 @@ def test_normative_calculates_only_from_accepted_gate3c(tmp_path, monkeypatch):
     calls = _fake_calls(monkeypatch)
     dest = tmp_path / "calculated_normative"
     workflow.execute(root=root, output_dir=dest, rating_source="normative",
-                     aaps_reference=reference, acknowledge_sub012_exploratory=True)
+                     aaps_reference=reference, reproduce_original_cohort=True,
+                     acknowledge_original_cohort_eligibility=True)
     assert [name for name, _ in calls] == [
         "run_kawaii_norm02_exploratory.py", "run_kawaii_cuteness_report_figures.py"
     ]
@@ -105,16 +108,17 @@ def test_normative_calculates_only_from_accepted_gate3c(tmp_path, monkeypatch):
     assert (dest / "normative_summary.zip").is_file()
     assert (dest / "figures/MANIFEST.json").is_file()
     manifest = json.loads((dest / "MANIFEST.json").read_text())
-    assert manifest["normative_mode"] == "authenticated_corrected_epochs"
+    assert manifest["normative_mode"] == "original_cohort_reproduction"
     assert manifest["normative_checkout_head"] == "f" * 40
 
 
 def test_both_keeps_provenance_and_figures_separate(tmp_path, monkeypatch):
-    root, _ = _root(tmp_path)
+    root, pub = _root(tmp_path)
     calls = _fake_calls(monkeypatch)
     dest = tmp_path / "both_results"
     workflow.execute(root=root, output_dir=dest, rating_source="both",
-                     acknowledge_sub012_exploratory=True)
+                     source_root=pub, reproduce_original_cohort=True,
+                     acknowledge_original_cohort_eligibility=True)
     assert len(calls) == 2
     fig_args = calls[-1][1]
     assert "--source-root" in fig_args and "--normative-archive" in fig_args
@@ -122,14 +126,18 @@ def test_both_keeps_provenance_and_figures_separate(tmp_path, monkeypatch):
     assert json.loads((dest / "MANIFEST.json").read_text())["separate_rating_authorities"]
 
 
-def test_sub012_requires_explicit_acknowledgement_even_with_archive(tmp_path):
+def test_original_cohort_reproduction_requires_explicit_acknowledgement(tmp_path):
     root, _ = _root(tmp_path)
-    path = tmp_path / "any.zip"
-    path.write_bytes(b"synthetic")
-    for choice in ("normative", "both"):
-        with pytest.raises(ValueError, match="acknowledge-sub012"):
-            workflow.execute(root=root, output_dir=tmp_path / choice,
-                             rating_source=choice, normative_archive=path)
+    with pytest.raises(ValueError, match="acknowledge-original-cohort-eligibility"):
+        workflow.execute(root=root, output_dir=tmp_path / "normative",
+                         rating_source="normative", reproduce_original_cohort=True)
+
+
+def test_normative_requires_archive_or_explicit_reproduction(tmp_path):
+    root, _ = _root(tmp_path)
+    with pytest.raises(ValueError, match="normative-archive"):
+        workflow.execute(root=root, output_dir=tmp_path / "normative",
+                         rating_source="normative")
 
 
 def test_invalid_mixed_modes_fail_closed(tmp_path):
@@ -139,24 +147,25 @@ def test_invalid_mixed_modes_fail_closed(tmp_path):
     with pytest.raises(ValueError, match="Normative-only options"):
         workflow.execute(root=root, output_dir=tmp_path / "bad", rating_source="participant",
                          normative_archive=archive)
-    with pytest.raises(ValueError, match="only used"):
+    with pytest.raises(ValueError, match="cannot be combined"):
         workflow.execute(root=root, output_dir=tmp_path / "bad", rating_source="normative",
-                         normative_archive=archive, aaps_reference=archive,
-                         acknowledge_sub012_exploratory=True)
+                         normative_archive=archive, reproduce_original_cohort=True,
+                         acknowledge_original_cohort_eligibility=True)
     with pytest.raises(ValueError, match="source-root"):
         workflow.execute(root=root, output_dir=tmp_path / "bad", rating_source="normative",
-                         source_root=root, acknowledge_sub012_exploratory=True)
+                         source_root=root, normative_archive=archive)
 
 
 def test_output_must_be_fresh_and_outside_repository(tmp_path, monkeypatch):
-    root, _ = _root(tmp_path)
+    root, pub = _root(tmp_path)
     _fake_calls(monkeypatch)
     with pytest.raises(ValueError, match="outside"):
-        workflow.execute(root=root, output_dir=root / "outputs" / "new", rating_source="participant")
+        workflow.execute(root=root, output_dir=root / "outputs" / "new",
+                         rating_source="participant", source_root=pub)
     existing = tmp_path / "exists"
     existing.mkdir()
     with pytest.raises(FileExistsError):
-        workflow.execute(root=root, output_dir=existing, rating_source="participant")
+        workflow.execute(root=root, output_dir=existing, rating_source="participant", source_root=pub)
 
 
 def test_failed_renderer_does_not_publish_partial_results(tmp_path, monkeypatch):
@@ -176,7 +185,8 @@ def test_failed_renderer_does_not_publish_partial_results(tmp_path, monkeypatch)
     monkeypatch.setattr(workflow, "_checkout_head", lambda root: "d" * 40)
     with pytest.raises(subprocess.CalledProcessError):
         workflow.execute(root=root, output_dir=dest, rating_source="normative",
-                         acknowledge_sub012_exploratory=True)
+                         reproduce_original_cohort=True,
+                         acknowledge_original_cohort_eligibility=True)
     assert not dest.exists()
 
 
@@ -186,7 +196,8 @@ def test_missing_normative_script_blocks_without_output(tmp_path):
     dest = tmp_path / "should_not_exist"
     with pytest.raises(FileNotFoundError, match="implementation missing"):
         workflow.execute(root=root, output_dir=dest, rating_source="normative",
-                         acknowledge_sub012_exploratory=True)
+                         reproduce_original_cohort=True,
+                         acknowledge_original_cohort_eligibility=True)
     assert not dest.exists()
 
 

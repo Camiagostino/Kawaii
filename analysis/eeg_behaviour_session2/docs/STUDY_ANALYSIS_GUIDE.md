@@ -77,6 +77,6 @@ The **arousal-coefficient stage** extracts a coefficient from an existing model;
 
 See [Reproducing the existing study](REPRODUCE_EXISTING_STUDY.md), [Adding participants](ADD_NEW_PARTICIPANTS.md) and [Collaborator testing](COLLABORATOR_TESTING.md) for further details.
 
-## One descriptive cuteness analysis command
+## Descriptive cuteness rating sources
 
-For the existing corrected study, `kawaii-session2-eeg cuteness --rating-source participant|normative|both --output-dir /private/new/result` exposes participant-rated Gate 5B figure generation and normative score-defined descriptive ERP generation/archive reuse under one CLI. See [Unified descriptive cuteness analysis](CUTENESS_UNIFIED_ANALYSIS.md) for complete commands and prerequisites. This operation **does not** rerun preprocessing/ICA/rejection, change accepted results or perform inferential modelling. Normative original-pool membership and exposure inclusion remain scientifically unresolved. The established `participant cuteness` and `group` processing commands are **not replaced**.
+`kawaii-session2-eeg cuteness --rating-source participant|normative|both` renders descriptive curves from separately authenticated group-publication and/or normative-archive inputs. It does not replace the participant or group workflows and does not run preprocessing, rejection or inferential modelling. See [Descriptive cuteness rating sources](CUTENESS_UNIFIED_ANALYSIS.md).

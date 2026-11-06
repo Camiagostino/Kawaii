@@ -1,8 +1,9 @@
 """Single entry point for two independently authorised cuteness ERP sources.
 
-Participant: render the accepted, already published Gate 5B group evokeds.
-Normative: reuse an authorised NORM-02 archive or calculate descriptive
-waveforms from *already corrected*, publication-authenticated Gate 3C epochs.
+Participant: render accepted, already published group evokeds.
+Normative: reuse an authorised descriptive archive. A separate explicit
+original-cohort reproduction mode can calculate descriptive waveforms from
+*already corrected*, publication-authenticated epochs.
 Neither route reruns preprocessing, ICA, rejected-epoch decisions or models.
 
 The two rating families are NOT interchangeable scientific estimands.
@@ -77,7 +78,8 @@ def execute(
     source_root: Path | None = None,
     normative_archive: Path | None = None,
     aaps_reference: Path | None = None,
-    acknowledge_sub012_exploratory: bool = False,
+    reproduce_original_cohort: bool = False,
+    acknowledge_original_cohort_eligibility: bool = False,
 ) -> Path:
     """Stage outputs privately; publish only on success; never write study sources."""
     if rating_source not in CHOICES:
@@ -85,20 +87,35 @@ def execute(
     root, output = _checked_paths(Path(root), Path(output_dir))
     participant = rating_source in ("participant", "both")
     normative = rating_source in ("normative", "both")
-    if normative and not acknowledge_sub012_exploratory:
+    if reproduce_original_cohort and not normative:
+        raise ValueError("--reproduce-original-cohort requires normative or both rating sources")
+    if reproduce_original_cohort and normative_archive is not None:
+        raise ValueError("--reproduce-original-cohort cannot be combined with --normative-archive")
+    if normative and normative_archive is None and not reproduce_original_cohort:
         raise ValueError(
-            "Normative cohort includes 190 exposure-ambiguous sub012 epochs; "
-            "explicit --acknowledge-sub012-exploratory required"
+            "Normative selection requires --normative-archive; use "
+            "--reproduce-original-cohort only for the fixed original-cohort workflow"
         )
-    if not normative and (normative_archive is not None or aaps_reference is not None or acknowledge_sub012_exploratory):
+    if reproduce_original_cohort and not acknowledge_original_cohort_eligibility:
+        raise ValueError(
+            "Original-cohort reproduction requires the explicit "
+            "--acknowledge-original-cohort-eligibility safeguard"
+        )
+    if not reproduce_original_cohort and acknowledge_original_cohort_eligibility:
+        raise ValueError(
+            "--acknowledge-original-cohort-eligibility is valid only with "
+            "--reproduce-original-cohort"
+        )
+    if not normative and (normative_archive is not None or aaps_reference is not None):
         raise ValueError("Normative-only options are invalid with participant rating source")
-    if aaps_reference is not None and normative_archive is not None:
-        raise ValueError("--aaps-reference is only used when calculating a new normative archive")
+    if aaps_reference is not None and not reproduce_original_cohort:
+        raise ValueError("--aaps-reference is used only with --reproduce-original-cohort")
     if source_root is not None and not participant:
         raise ValueError("--source-root requires participant or both rating sources")
     if participant:
-        source = (Path(source_root) if source_root is not None else
-                  root / "workspace/kawaii/session2/corrections/r11_qc_v3")
+        if source_root is None:
+            raise ValueError("--source-root is required for participant or both rating sources")
+        source = Path(source_root)
         source = source.resolve(strict=True)
         if not source.is_dir():
             raise ValueError("Published participant source must be a directory")
@@ -111,7 +128,7 @@ def execute(
         raise ValueError("AAPS reference must be an existing file")
     # These are code requirements; validate before any analysis or output writes.
     required_scripts = ["run_kawaii_cuteness_report_figures.py"]
-    if normative and supplied_archive is None:
+    if reproduce_original_cohort:
         required_scripts.append("run_kawaii_norm02_exploratory.py")
     for name in required_scripts:
         if not (root / "tools" / name).is_file():
@@ -122,7 +139,7 @@ def execute(
         stage = Path(stage_name)
         norm_zip = supplied_archive
         head = None
-        if normative and norm_zip is None:
+        if reproduce_original_cohort:
             head = _checkout_head(root)
             norm_path = stage / "normative_summary"
             cmd = ["--repo", str(root), "--output", str(norm_path), "--source-head", head,
@@ -153,14 +170,14 @@ def execute(
             "participant_source": str(source) if source is not None else None,
             "normative_mode": (
                 "existing_archive" if supplied_archive is not None else
-                "authenticated_corrected_epochs" if normative else None
+                "original_cohort_reproduction" if reproduce_original_cohort else None
             ),
             "normative_archive_sha256": _sha256(norm_zip) if norm_zip is not None else None,
             "normative_checkout_head": head,
             "figure_manifest_sha256": _sha256(fig_manifest),
             "no_preprocessing_ica_or_model_fitting": True,
             "separate_rating_authorities": True,
-            "normative_exposure_ambiguity_acknowledged": bool(normative),
+            "original_cohort_eligibility_safeguard_acknowledged": bool(reproduce_original_cohort),
             "note": "Descriptive category waveforms only, not hypothesis testing or scientific approval",
         }
         (stage / "MANIFEST.json").write_text(
@@ -177,15 +194,17 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--root", type=Path, default=Path.cwd(),
                         help="Analysis checkout root (not an EEG input path)")
     parser.add_argument("--source-root", type=Path, default=None,
-                        help="Current corrected Gate 5B group publication root for participant/both")
+                        help="Authenticated group publication root for participant/both")
     parser.add_argument("--normative-archive", type=Path, default=None,
-                        help="Existing authorised NORM-02 ZIP (skips new normative aggregation)")
+                        help="Existing authorised descriptive normative ZIP for normative/both")
     parser.add_argument("--aaps-reference", type=Path, default=None,
-                        help="Privately supplied SHA-pinned AAPS crosswalk for new normative aggregation")
+                        help="Private pinned crosswalk for original-cohort reproduction only")
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="Fresh output directory outside the checkout")
-    parser.add_argument("--acknowledge-sub012-exploratory", action="store_true",
-                        help="Explicitly retain exploratory sub012 exposure-ambiguous epochs")
+    parser.add_argument("--reproduce-original-cohort", action="store_true",
+                        help="Run the fixed, source-pinned original-cohort normative reproduction")
+    parser.add_argument("--acknowledge-original-cohort-eligibility", action="store_true",
+                        help="Required eligibility safeguard for original-cohort reproduction only")
 
 
 def run_namespace(args: argparse.Namespace) -> int:
@@ -193,7 +212,8 @@ def run_namespace(args: argparse.Namespace) -> int:
         root=args.root, output_dir=args.output_dir, rating_source=args.rating_source,
         source_root=args.source_root, normative_archive=args.normative_archive,
         aaps_reference=args.aaps_reference,
-        acknowledge_sub012_exploratory=args.acknowledge_sub012_exploratory,
+        reproduce_original_cohort=args.reproduce_original_cohort,
+        acknowledge_original_cohort_eligibility=args.acknowledge_original_cohort_eligibility,
     )
     print("KAWAII_CUTENESS_DESCRIPTIVE: PASS")
     print("OUTPUT:", output)

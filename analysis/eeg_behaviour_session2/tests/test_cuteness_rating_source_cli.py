@@ -17,29 +17,30 @@ spec = importlib.util.spec_from_file_location('kawaii_cuteness_report_cli', SCRI
 module = importlib.util.module_from_spec(spec)
 assert spec.loader is not None
 spec.loader.exec_module(module)
+SYNTHETIC_SOURCE_IDS = ('participant_alpha', 'participant_beta')
 
 
-def _archive(tmp_path):
+def _archive(tmp_path, *, participant_count=2, source_ids=SYNTHETIC_SOURCE_IDS):
     path = tmp_path / 'normative.zip'
-    times = np.linspace(-.2, 1.2, 701)
+    times = np.linspace(-.2, 1.2, 8)
     rows = []
     for cat, level in [('lower_aaps', .1), ('higher_aaps', .7)]:
         rows.extend(dict(family='normative', category=cat, time_s=float(t),
-                         mean_amplitude_uv=float(level + np.sin(t)), n_participants=8)
+                          mean_amplitude_uv=float(level + np.sin(t)),
+                          n_participants=participant_count)
                     for t in times)
     waves = pd.DataFrame(rows).to_csv(index=False).encode('utf-8')
     summary = pd.DataFrame([
-        dict(family='normative', category=cat, n_participants=8,
+        dict(family='normative', category=cat, n_participants=participant_count,
              retained_trials=n, contributed_trials=n, excluded_trials=0, minimum_trials=10)
-        for cat, n in [('lower_aaps', 1482), ('higher_aaps', 1486)]
+        for cat, n in [('lower_aaps', 30), ('higher_aaps', 32)]
     ]).to_csv(index=False).encode('utf-8')
     manifest = {
         'schema': 'kawaii_norm02_exploratory_unapproved_v1',
         'scientific_status': module.SCIENTIFIC_STATUS,
         'source_repository_head': 'a'*40,
-        'all_retained_sub012_exposure_ambiguous': 190,
         'participant_source_bindings_sha256': {
-            sub: f'{i:064x}' for i, sub in enumerate(module.SOURCE_IDS, start=1)
+            subject: f'{i:064x}' for i, subject in enumerate(source_ids, start=1)
         },
         'file_sha256': {module.FILE_WAVEFORM: sha256(waves).hexdigest(),
                         module.FILE_SUMMARY: sha256(summary).hexdigest()},
@@ -49,6 +50,21 @@ def _archive(tmp_path):
         z.writestr(module.FILE_SUMMARY, summary)
         z.writestr('MANIFEST.json', json.dumps(manifest))
     return path
+
+
+def _replace_summary(path, transform):
+    with zipfile.ZipFile(path) as z:
+        data = {name: z.read(name) for name in z.namelist()}
+    summary = pd.read_csv(__import__('io').BytesIO(data[module.FILE_SUMMARY]))
+    transform(summary)
+    data[module.FILE_SUMMARY] = summary.to_csv(index=False).encode()
+    manifest = json.loads(data['MANIFEST.json'])
+    manifest['file_sha256'][module.FILE_SUMMARY] = sha256(data[module.FILE_SUMMARY]).hexdigest()
+    data['MANIFEST.json'] = json.dumps(manifest).encode()
+    path.unlink()
+    with zipfile.ZipFile(path, 'w') as z:
+        for name, content in data.items():
+            z.writestr(name, content)
 
 
 def test_explicit_rating_source_selection():
@@ -61,10 +77,39 @@ def test_explicit_rating_source_selection():
 def test_archive_returns_exact_two_score_defined_curves(tmp_path):
     archive = _archive(tmp_path)
     curves, provenance = module.read_normative_archive(archive)
-    assert len(curves) == 1402
+    assert len(curves) == 16
     assert set(curves.category) == set(module.NORMATIVE_CATEGORIES)
-    assert provenance['category_counts'] == {'lower_aaps': 1482, 'higher_aaps': 1486}
-    assert len(provenance['participant_source_bindings_sha256']) == 8
+    assert provenance['category_counts'] == {'lower_aaps': 30, 'higher_aaps': 32}
+    assert set(provenance['participant_source_bindings_sha256']) == set(SYNTHETIC_SOURCE_IDS)
+
+
+def test_archive_allows_bound_noncontributors(tmp_path):
+    source_ids = (*SYNTHETIC_SOURCE_IDS, 'participant_gamma')
+    archive = _archive(tmp_path, participant_count=2, source_ids=source_ids)
+    curves, provenance = module.read_normative_archive(archive)
+    assert set(curves.n_participants) == {2}
+    assert set(provenance['participant_source_bindings_sha256']) == set(source_ids)
+
+
+def test_archive_rejects_contributors_above_authenticated_bindings(tmp_path):
+    archive = _archive(tmp_path, participant_count=3)
+    with pytest.raises(ValueError, match='exceeds authenticated participant bindings'):
+        module.read_normative_archive(archive)
+
+
+@pytest.mark.parametrize(
+    ('column', 'value', 'message'),
+    [
+        ('n_participants', 1.5, 'must be integers'),
+        ('retained_trials', 19, 'inconsistent with contributor minimums'),
+        ('excluded_trials', 1, 'do not sum to retained trials'),
+    ],
+)
+def test_archive_rejects_internally_inconsistent_counts(tmp_path, column, value, message):
+    archive = _archive(tmp_path)
+    _replace_summary(archive, lambda summary: summary.__setitem__(column, value))
+    with pytest.raises(ValueError, match=message):
+        module.read_normative_archive(archive)
 
 
 def test_archive_rejects_hash_tampering(tmp_path):
@@ -82,18 +127,8 @@ def test_archive_rejects_hash_tampering(tmp_path):
 
 def test_archive_rejects_wrong_category_count(tmp_path):
     archive = _archive(tmp_path)
-    with zipfile.ZipFile(archive) as z:
-        data = {n: z.read(n) for n in z.namelist()}
-    summary = pd.read_csv(__import__('io').BytesIO(data[module.FILE_SUMMARY]))
-    summary.loc[0, 'retained_trials'] = 1483
-    data[module.FILE_SUMMARY] = summary.to_csv(index=False).encode()
-    manifest = json.loads(data['MANIFEST.json'])
-    manifest['file_sha256'][module.FILE_SUMMARY] = sha256(data[module.FILE_SUMMARY]).hexdigest()
-    data['MANIFEST.json'] = json.dumps(manifest).encode()
-    archive.unlink()
-    with zipfile.ZipFile(archive, 'w') as z:
-        for n, b in data.items(): z.writestr(n, b)
-    with pytest.raises(ValueError, match='counts'):
+    _replace_summary(archive, lambda summary: summary.__setitem__('retained_trials', -1))
+    with pytest.raises(ValueError, match='counts are invalid'):
         module.read_normative_archive(archive)
 
 
@@ -120,6 +155,7 @@ def test_output_inside_repo_or_existing_is_rejected(tmp_path):
 def test_normative_mode_creates_only_pinned_figure_and_manifest(tmp_path, monkeypatch):
     """End-to-end render without any EEG source module or files."""
     from types import ModuleType, SimpleNamespace
+    from matplotlib.figure import Figure
     archive = _archive(tmp_path)
     repo = tmp_path / 'repo'
     repo.mkdir()
@@ -137,6 +173,14 @@ def test_normative_mode_creates_only_pinned_figure_and_manifest(tmp_path, monkey
     fake_style.style_axes = lambda ax, style: None
     fake_style.style_legend = lambda ax, style: ax.legend()
     monkeypatch.setitem(sys.modules, fake_style.__name__, fake_style)
+    rendered_text = []
+    actual_savefig = Figure.savefig
+
+    def capture_text(figure, *args, **kwargs):
+        rendered_text.extend(text.get_text() for text in figure.texts)
+        return actual_savefig(figure, *args, **kwargs)
+
+    monkeypatch.setattr(Figure, 'savefig', capture_text)
     result = module.run(rating_source='normative', output_dir=destination,
                         project_root=repo, normative_archive=archive)
     assert result == destination
@@ -148,6 +192,8 @@ def test_normative_mode_creates_only_pinned_figure_and_manifest(tmp_path, monkey
     filename = 'Figure_5b_Normative_AAPS_Cuteness.png'
     assert (destination/filename).stat().st_size > 1000
     assert sha256((destination/filename).read_bytes()).hexdigest() == manifest['file_sha256'][filename]
+    assert 'AAPS score-defined categories' in rendered_text
+    assert all('not scientifically approved' not in text for text in rendered_text)
 
 
 @pytest.mark.parametrize('rating_source', ['participant', 'both'])
@@ -160,7 +206,7 @@ def test_participant_source_dispatch_and_manifest(tmp_path, monkeypatch, rating_
     pointer = source_root/'current.json'; pointer.write_text('{"status":"source"}')
     source = SimpleNamespace(generation_id='a'*64, current_manifest=pointer,
                              artifact_hashes={'cuteness_grand_average_fif': 'b'*64},
-                             participant_ids=module.SOURCE_IDS)
+                             participant_ids=SYNTHETIC_SOURCE_IDS)
     monkeypatch.setattr(module, 'load_participant_source',
                         lambda source_root, project_root: (source, object()))
     for name in ('eeg_software', 'eeg_software.workflows',

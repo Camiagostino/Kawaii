@@ -1,9 +1,10 @@
-"""Read-only source-authenticated adapter for corrected Kawaii NORM-02.
+"""Read-only source-authenticated adapter for original-cohort Kawaii NORM-02.
 
-This is a bounded adapter, not a new Gate 3C/4 processing pipeline. It authenticates
-current immutable Gate 3C and Gate 4B publications, reuses existing Gate 4
-metadata/source-exposure validators, and returns accepted ROI traces for the
-separate NORM-02 aggregation core. It neither writes outputs nor refits models.
+This intentionally cohort-pinned adapter is a distinct reproduction mode, not the
+reusable archive interface or a new Gate 3C/4 processing pipeline. It authenticates
+current immutable publications, reuses existing metadata/source-exposure
+validators, and returns accepted ROI traces for the separate aggregation core.
+It neither writes outputs nor refits models.
 """
 from __future__ import annotations
 

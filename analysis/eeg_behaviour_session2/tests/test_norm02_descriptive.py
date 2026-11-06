@@ -39,6 +39,25 @@ def test_subjective_four_bins():
         with pytest.raises(Norm02ValidationError): subjective_category(value)
 
 
+def test_generic_core_accepts_alternative_participant_and_image_ids():
+    reference = {"stimulus-A.png": 3.0}
+    n = 10
+    item = AcceptedPartTraces(
+        "participant_alpha", "part1", TIMES, np.zeros((n, len(TIMES))),
+        pd.DataFrame({
+            "image_filename": ["stimulus-A.png"] * n,
+            "M_Kawaii": [3.0] * n,
+            "kawaii_rating": [2] * n,
+            "trial": np.arange(n) + 1,
+            "event_sample": (np.arange(n) + 1) * 1000,
+        }),
+        DIGEST,
+    )
+    result = aggregate_descriptive([item], aaps_reference=reference)
+    assert set(result.counts.participant) == {"participant_alpha"}
+    assert int(result.summary.query('category == "lower_aaps"').iloc[0].retained_trials) == n
+
+
 def test_equal_participant_weight_not_trial_weighted():
     # Participant A has twice as many trials, but B carries equal group weight.
     a = part("sub005", "part1", ["1.jpg"]*20, [1]*20, [0]*20)

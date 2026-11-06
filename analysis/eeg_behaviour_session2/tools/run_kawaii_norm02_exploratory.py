@@ -1,7 +1,8 @@
-"""NORM-02: isolated, explicitly exploratory, descriptive EEG waveform outputs.
+"""Original-cohort NORM-02 descriptive reproduction.
 
-Requires conscious --acknowledge-sub012-exploratory switch. No EEG/preprocessing
-writes, model fitting or inferential tests. Never a final approved analysis.
+This intentionally fixed workflow preserves original-cohort source, eligibility,
+and result-fingerprint guards. It is not the reusable alternative-dataset path.
+No EEG/preprocessing writes, model fitting or inferential tests are performed.
 """
 from __future__ import annotations
 
@@ -176,6 +177,8 @@ def write_outputs(full_result, sensitivity_result, bindings, output: Path, *, co
             "sampling": "existing Gate 3C epochs, no new preprocessing/ICA/models",
             "group_weighting": "equal participant weights after participant trial means",
             "statistical_tests": "none",
+            "normative_waveforms_member": "eight_all_retained_waveforms.csv",
+            "normative_summary_member": "eight_all_retained_summary.csv",
             "file_sha256": files,
         }
         (stage / "MANIFEST.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -198,7 +201,7 @@ def write_outputs(full_result, sensitivity_result, bindings, output: Path, *, co
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Kawaii NORM02 non-inferential exploratory figures")
+    parser = argparse.ArgumentParser(description="Original-cohort NORM02 descriptive reproduction")
     parser.add_argument("--repo",type=Path,required=True)
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--source-head",required=True)
@@ -243,8 +246,6 @@ def main() -> None:
     archive = write_outputs(full,seven,
         {k:v.source_binding_sha256 for k,v in parts.items()},out,cohort_head=args.source_head)
     print("NORM02_EXPLORATORY_QC: PASS",flush=True)
-    print("SUB012: 371 retained including 190 exposure-ambiguous; exploratory only",flush=True)
-    print("SUB010_SUBJECTIVE_LOW: 8 retained, excluded from mean",flush=True)
     print("OUTPUT_ZIP:",archive,flush=True)
     print("SCIENTIFIC_STATUS: EXPLORATORY_NOT_APPROVED",flush=True)
 

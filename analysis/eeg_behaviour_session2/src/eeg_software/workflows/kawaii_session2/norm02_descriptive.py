@@ -82,8 +82,15 @@ def subjective_category(value: object) -> str:
 
 
 def _checked_part(part: AcceptedPartTraces, *, reference: Mapping[str, float]) -> tuple[np.ndarray, pd.DataFrame]:
-    if not re.fullmatch(r"sub\d{3}", part.participant) or not re.fullmatch(r"part\d+", part.recording_part):
-        raise Norm02ValidationError("Non-canonical participant/part identity")
+    participant = str(part.participant).strip()
+    if (
+        not participant
+        or participant in {".", ".."}
+        or any(character in participant for character in ("/", "\\"))
+        or any(ord(character) < 32 for character in participant)
+        or not re.fullmatch(r"part\d+", part.recording_part)
+    ):
+        raise Norm02ValidationError("Invalid participant/part identity")
     if not re.fullmatch(r"[0-9a-fA-F]{64}", part.source_binding_sha256):
         raise Norm02ValidationError("Missing/invalid source-binding digest; validation must precede aggregation")
     times = np.asarray(part.times_s, dtype=float)
@@ -113,8 +120,8 @@ def _checked_part(part: AcceptedPartTraces, *, reference: Mapping[str, float]) -
     subjective = []
     for item, score, self_rating in zip(md["image_filename"], md["M_Kawaii"], md["kawaii_rating"]):
         item = str(item).strip()
-        if not re.fullmatch(r"\d+\.jpg", item):
-            raise Norm02ValidationError(f"Invalid source image ID: {item!r}")
+        if not item:
+            raise Norm02ValidationError("Source image ID must be non-empty")
         if item not in reference:
             raise Norm02ValidationError(f"Image absent from pinned AAPS crosswalk: {item}")
         try:

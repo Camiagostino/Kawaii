@@ -100,6 +100,23 @@ Select a **new output directory outside the checkout**. The source archive must 
 
 The `--root` flag selects another analysis directory; `--config` and `--secondary-config` select alternative YAML configurations.
 
+### Normative cuteness statistical analysis (original cohort)
+
+The separate `tools/run_kawaii_normative_inference.py` script provides two **exploratory** tests using the corrected, source-verified original-cohort epochs and the 500–800 ms Cz/CP1/CP2/Pz ROI: a participant-level higher-versus-lower AAPS comparison and a continuous AAPS-score mixed-effects model with verified old/new status and participant/image random intercepts. The two primary *p*-values are Holm-adjusted. This script does not change EEG preprocessing or the descriptive cuteness figure command.
+
+The original-cohort source publications, local configuration and authorised 400-image AAPS reference CSV are required; these inputs are not distributed with the code. From the analysis directory:
+
+```bash
+python tools/run_kawaii_normative_inference.py --repo . \
+  --aaps-reference /path/to/authorised_aaps_reference.csv --preflight
+
+python tools/run_kawaii_normative_inference.py --repo . \
+  --aaps-reference /path/to/authorised_aaps_reference.csv \
+  --run-analysis --output /path/to/new/normative-inference-results
+```
+
+Optionally add `--include-verified-sub012-sensitivity` to include only source-verified trials from the eighth participant in a categorical sensitivity check. Use a new output directory outside the checkout and review model diagnostics and eligibility before interpreting the results.
+
 ## Study code layout
 
 ```text
